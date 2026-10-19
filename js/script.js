@@ -38,44 +38,10 @@ const svg = d3.select("#vis")
 .attr("width", width+margin.left+margin.right)
 .attr("height", height+margin.top+margin.bottom)
 .style("margin-top", "50px")
-// .attr("display", "block")
-// .attr("overflow", "visible")
-// .attr("viewBox", `0 0 ${width} ${height}`)
-.style("background-color", "#bdbdbd20")
 
 const g = svg.append("g")
 .attr("transform", `translate(${margin.left}, ${margin.top})`)
 
-// const brush = d3.brush()
-// .extent([margin.left, margin.top], [width-margin.right, height-margin.bottom])
-// .on("start brush end", brushed)
-
-// svg.append("g")
-// .attr("class", "brush")
-// .call(brush)
-
-// function brushed(event) {
-//   const selection = event.selection; // Contains [[x0, y0], [x1, y1]] boundaries
-
-//   if (selection === null) {
-//     // If the brush selection is cleared, reset all dots
-//     dots.attr('fill', 'steelblue');
-//   } else {
-//     // Destructure the bounding box pixels
-//     const [[x0, y0], [x1, y1]] = selection;
-
-//     // Toggle a class or attribute based on whether the dot falls inside the box
-//     dots.attr('fill', d => {
-//       const cx = xScale(d.x);
-//       const cy = yScale(d.y);
-      
-//       // Check if pixel coordinates fall within the brush box boundaries
-//       const isBrushed = x0 <= cx && cx <= x1 && y0 <= cy && cy <= y1;
-      
-//       return isBrushed ? 'crimson' : 'steelblue';
-//     });
-//   }
-// }
 function init() {
     d3.csv("./data/weather.csv", d => ({
         station: d.station,
@@ -177,11 +143,12 @@ function setupSelector() {
 }
 
 function updateAxes() {
+    console.log()
     svg.selectAll('.axis').remove()
     svg.selectAll('.labels').remove()
 
     xScale = d3.scaleTime()
-        .domain(monthRange)
+        .domain([monthRange[0], d3.timeDay.offset(monthRange[1],30)])
         .range([margin.left, width-margin.right])
     const xAxis = d3.axisBottom(xScale)
     .ticks(d3.timeMonth.every(1))
@@ -193,7 +160,7 @@ function updateAxes() {
         .call(xAxis);
     
     yScale = d3.scaleLinear()
-        .domain(yDomain)
+        .domain(yDomain)//[-40,140])
         .range([height-margin.bottom, margin.top]);
     const yAxis = d3.axisLeft(yScale)
 
@@ -208,7 +175,7 @@ function updateAxes() {
         .attr("x", width / 2 + margin.left)
         .attr("y", height + margin.top+ 2*margin.top/3)
         .attr("text-anchor", "middle")
-        .text("Time") // Displays the current x-axis variable
+        .text(`Month in ${stateVar[0]}`) // Displays the current x-axis variable
 
     // // Y-axis label (rotated)
     svg.append("text")
@@ -222,7 +189,15 @@ function updateAxes() {
 
 function updateVis() {
     const color = getColorScale()
-    .domain(yDomain)
+    switch (yVar) {
+        case "TMIN":
+        case "TMAX":
+        case "TAVG":
+            color.domain([0,100])
+            break;
+        default: color.domain(yDomain)
+    }
+    // .domain([0,120])//yDomain
     let allRecs = []
     for (let m = monthRange[0].getMonth(); m < monthRange[1].getMonth(); m++) {
         const month = currentData[m]
@@ -232,59 +207,88 @@ function updateVis() {
             recs.forEach(r => allRecs.push(r))}
         })
     }
+    console.time()
+    const mappedRecs = allRecs.map(d => ({
+        yval: d[yVar],
+        lab: convertLabel(yVar),
+        cx: xScale(d.date),
+        cy: yScale(d[yVar]),
+        fill: color(d[yVar]),
+        date: d3.timeFormat("%B %d, %Y")(d.date),
+        state: d.state
+    }));
+    // console.log(mappedRecs)
+    // console.log(g.selectAll(".points"))
     g.selectAll(".points")
-        .data(allRecs)
+        .data(mappedRecs)
         .join(
             function(enter) {
                 return enter
                 .append("circle")
                 .attr("class", "points")
-                .attr("cx", d => xScale(d.date))
-                .attr("cy", d => yScale(d[yVar]))
+                // .attr("cx", 0)
+                // .attr("cy",0)
+                .attr("transform", d => `translate(${d.cx}, ${d.cy})`)
                 .attr("r", 0)
                 .attr("opacity", 0.8)
-                .style("fill", d => color(d[yVar]))
+                .attr('stroke', 'black')
+                .attr("stroke-width", "0px")
+                .style("fill", d=>d.fill)
                 .on('mouseover', function (event, d) {
-                    // console.log(d) // See the data point in the console for debugging
                     d3.select('#tooltip')
-                        // if you change opacity to hide it, you should also change opacity here
-                        .style("display", 'block') // Make the tooltip visible
-                        .html( // Change the html content of the <div> directly
-                        `<strong>${d.state}</strong><br/>
-                        ${convertLabel(yVar)}: ${d[yVar]}<br/>
-                        ${d3.timeFormat("%B %d, %Y")(d.date)}`)
+                    .style("display", 'block')
+                    .html(
+                        `<strong>${d.state}</strong><br/>${d.date}<br/>
+                        ${d.lab}: ${d.yval}`)
                         .style("left", (event.pageX + 20) + "px")
-                        .style("top", (event.pageY - 28) + "px");
-                    d3.select(this) // Refers to the hovered circle
-                    .style('stroke', 'black')
-                    .style('stroke-width', '4px')
-                })
+                        .style("top", (event.pageY - 28) + "px")
+                        .style('stroke', 'black')
+                        d3.select(this)
+                        .style('stroke-width', '3px')
+                    })
                 .on("mouseout", function (event, d) {
                     d3.select('#tooltip')
                     .style('display', 'none') // Hide tooltip when cursor leaves
                     d3.select(this)
                     .style('stroke-width', '0px')
                 })
-                .transition(t)
+                // .on("click", (e,d) => {
+                    //     updateDetailView(d)
+                    // })
+                .transition()
+                .duration(300)
+                .delay((d,i) => i*1.5)
+                .attr('stroke-width', '0.1px')
                 .attr("r", sizeVar)
             },
             function(update) {
                 return update
-                .transition(t)
-                .attr("cx", d => xScale(d.date))
-                .attr("cy", d => yScale(d[yVar]))
-                .style("fill", d=> color(d[yVar]))
+                .attr('stroke-width', '0.1px')
+                .transition()
+                .duration(300)
+                .delay((d,i) => i*1.25)
+                .attr("transform", d => `translate(${d.cx}, ${d.cy})`)
+                .attr('stroke', 'black')
+                
+                .style("fill", d=>d.fill)
                 .attr("r", sizeVar)
             },
             function(exit){
                 return exit
-                .transition(t)
-                .attr("r", 0)
+                .transition()
+                .duration(100)
+                .delay((d,i) => i*1.05)
                 .remove()
             })
+            console.timeEnd()
 }
 
-
+// function updateDetailView(rec) {
+//     // let stateName = selectedState.data()[0]["properties"]["name"]
+//     d3.select("#detail-title")
+//     .html(`<h4>Detail View: ${rec.state}</h4>
+//         <p>Month: ${rec.date}</p><p>Max Temp Range: ${1}-${10}F</p>`) 
+// }
 // Filter for data from selected states within month range/
 // determine y domain 
 function setCurrentData() {
@@ -300,22 +304,21 @@ function setCurrentData() {
             currentData[m1][s] = mData[s]
             const currDomain = d3.extent(mData[s], d => d[yVar])
 
-            if (yDom[0] == null || yDom[1] == null) {
-                yDom = currDomain
-            }
-            else {
-                yDom = currDomain[0] <= yDom[0] && currDomain[1] >= yDom[1]
-                ? currDomain : yDom
-            }
+            // find min and max for yVar
+            if (yDom[0] == null || yDom[1] == null) yDom = currDomain
+            if (currDomain[0] <= yDom[0]) yDom[0] = currDomain[0]
+            if (currDomain[1] >= yDom[1]) yDom[1] = currDomain[1] 
+            // console.log("Curr domain:",currDomain)
+            // console.log("Y domain:",yDom)
         })
     }
     yDomain = yDom
-    console.log(currentData)
-    // console.log(yDomain)
+    // console.log(yVar)
+    // console.log(currentData)
 }
 
 function createMonthRange(m1,m2) {
-    return [new Date(m1), d3.timeDay.offset(new Date(m2),30)]
+    return [new Date(m1), new Date(m2)]//d3.timeDay.offset(new Date(m2),30)]
 }
 
 function convertLabel(str) {
@@ -332,12 +335,20 @@ function convertLabel(str) {
 
 function getColorScale() {
     switch (yVar) {
-        case 'TMAX': return d3.scaleSequential(d3.interpolateYlOrBr)
-        case 'TMIN': return d3.scaleSequential(d3.interpolateCool)
-        case 'TAVG': return d3.scaleSequential().interpolator(t => d3.interpolateSpectral(1-t))
-        case 'SNOW': return d3.scaleSequential(d3.interpolateBuPu)
-        case 'SNWD': return d3.scaleSequential(d3.interpolateBlues)
-        case 'PRCP': return d3.scaleSequential(d3.interpolateBrBG)
+        case 'TMAX': //return d3.scaleSequential(d3.interpolateYlOrBr)
+        case 'TMIN': //return d3.scaleSequential(d3.interpolateCool)
+        case 'TAVG':  {
+            return d3.scaleSequential().interpolator(t=> d3.interpolateRdYlBu(1-t))
+        }//.interpolator(t => d3.interpolateSpectral(1-t))
+        case 'SNOW': {
+            return d3.scaleSequential(d3.interpolateBuPu)
+        }
+        case 'SNWD': {
+            return d3.scaleSequential(d3.interpolateBlues)
+        }
+        case 'PRCP': {
+            return d3.scaleSequential(d3.interpolateBrBG)
+        }
         // default: return "noValue"
     }
 }
