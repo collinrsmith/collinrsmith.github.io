@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment 1</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="left-box">
+            <h2 style="margin-left: 27px;">Monthly U.S. Weather Trends</h2>
+            <div id="value"></div>
+            <div id="slider"></div>
+            Select a state: <select id="stateVariable" class="variable"></select>
+            Point size: <input type="number" id="sizeVariable" class="variable" style="width:100px">
+            <div id="buttons">
+                <label><input type="radio" name="toggle" id="TMAX" class="variable" checked>
+                    <span>Max Temperature</span></label>
+                <label><input type="radio" name="toggle" id="TMIN" class="variable">
+                    <span>Min Temperature</span></label>
+                <label><input type="radio" name="toggle" id="TAVG" class="variable">
+                    <span>Avg Temperature</span></label>
+                <label><input type="radio" name="toggle" id="PRCP" class="variable">
+                    <span>Precipitation</span></label>
+                <label><input type="radio" name="toggle" id="SNOW" class="variable">
+                    <span>Snowfall</span></label>
+                <label><input type="radio" name="toggle" id="SNWD" class="variable">
+                    <span>Snow Depth</span></label>
+            </div>
+            <div>
+                <h3 id="detail-title">Detail View</h3>
+                <p id="detail-text"></p>
+            </div>
+            <!-- Y: <select id="yVariable" class="variable"></select>
+            size: <select id="sizeVariable" class="variable"></select> -->
+        </div>
+        <div id="tooltip" style="display:none"></div>
+        <div id="vis"></div>
+    </div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-simple-slider"></script>
+    <script src="https://d3js.org/d3-transition.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    <!-- <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script> -->
+    <script src="js/script copy.js"></script>
+</body>
+
+</html>
+
+<!--
+Repurposed for positioning elements
+Source - https://stackoverflow.com/a/55430864
+Posted by Dostonbek Oripjonov, modified by community. See post 'Timeline' for change history
+Retrieved 2026-10-16, License - CC BY-SA 4.0
+
+Creating US map
+Source - https://billmill.org/making_a_us_map.html
+Source - https://observablehq.com/@d3/u-s-map
+
+Toggle buttons
+Source - https://stackoverflow.com/a/12524483
+Posted by Simon Darby, modified by community. See post 'Timeline' for change history
+Retrieved 2026-10-16, License - CC BY-SA 3.0
+-->
